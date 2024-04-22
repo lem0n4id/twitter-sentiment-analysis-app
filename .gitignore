@@ -2,3 +2,6 @@ __pycache__
 scarper.py
 .env
 cardiffnlp
+venv
+web-scraper\venv
+twitter-sentiment-analysis-app.code-workspace

@@ -1,30 +1,46 @@
-import pandas as pd
-from sentiment_analysis import perform_sentiment_analysis
-import yfinance as yf
+"""
+Core functions for fetching tweets, news, and stock data and performing sentiment analysis.
+"""
 from datetime import datetime, timedelta
+import pandas as pd
+import yfinance as yf
+from sentiment_analysis import perform_sentiment_analysis
 
-def get_tweets()->pd.DataFrame:
+def get_tweets(stock_name:str='TSLA')->pd.DataFrame:
     """
-    This function will read the Stock Tweets for Sentiment Analysis and Prediction dataset and return the dataframe.
+    This function will read the Stock Tweets for 
+    dataset and return the dataframe.
     """
-    tweets = pd.read_csv("https://raw.githubusercontent.com/lem0n4id/twitter-sentiment-analysis/main/stock_tweets.csv")
+    # make sure the dataframe has the columns "Tweet" and "Date"
+    stock_name=stock_name.upper()
+
+    # TODO: optimize the API - web scraping
+    # API call takes a long time
+    # response = requests.get(f'http://127.0.0.1:8000/tweets/?ticker={stock_name}').json()
+    # news: pd.DataFrame = pd.json_normalize(response)
+
+    tweets = pd.read_csv("data/tsla_tweets.csv")
     tweets['Date'] = pd.to_datetime(tweets['Date'])
-    
+
     return tweets
 
-def tweets_within_hours(df:pd.DataFrame, datetime:str='2021-09-30 00:13:26+00:00', stock_name:str='TSLA', next_x_hours:int=24) -> pd.DataFrame:
+def tweets_within_hours(df:pd.DataFrame, datetime:str='2021-09-30 00:13:26+00:00', next_x_hours:int=24) -> pd.DataFrame:
     """
-    This function will filter the tweets for the specified stock and within the next x hours from the given datetime.
+    This function will filter the tweets for the specified stock 
+    and within the next x hours from the given datetime.
     """
     # Convert datetime string to datetime object
     datetime = pd.to_datetime(datetime)
 
-    stock_name=stock_name.upper()
-
     # Filter dataframe for the specified stock and within the next x hours from the given datetime
-    filtered_df = df[(df['Stock Name'] == stock_name) &
-                     (df['Date'] >= datetime) &
-                     (df['Date'] <= datetime + pd.Timedelta(hours=next_x_hours))]
+    # filtered_df = df[(df['Stock Name'] == stock_name) &
+    #                  (df['Date'] >= datetime) &
+    #                  (df['Date'] <= datetime + pd.Timedelta(hours=next_x_hours))]
+    
+    # filtered_df = df[(df['Date'] >= datetime) &
+    #                  (df['Date'] <= datetime + pd.Timedelta(hours=next_x_hours))]
+    
+    filtered_df = df
 
     return filtered_df
 
@@ -37,7 +53,7 @@ def filter_unwanted_tweets(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     filtered_tweets = []
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         tweet = row['Tweet']
         for keyword in keywords:
             if keyword in tweet:
@@ -47,23 +63,86 @@ def filter_unwanted_tweets(df: pd.DataFrame, ticker: str) -> pd.DataFrame:
 
     return pd.DataFrame(filtered_tweets)
 
-def get_df(datetime:str='2021-09-30 00:13:26+00:00',stock:str='TSLA',next_x_hours:int=24)->pd.DataFrame:
+def get_tweets_df(datetime:str='2021-09-30 00:13:26+00:00',stock:str='TSLA',next_x_hours:int=24)->pd.DataFrame:
+    """
+    This function will return the dataframe containing the tweets for the specified stock.
+    """
     try:
-        df=get_tweets()
-        TSLA_tweets_specified=tweets_within_hours(df, datetime=datetime, stock_name=stock, next_x_hours=next_x_hours)
-        TSLA_tweets_filtered=filter_unwanted_tweets(TSLA_tweets_specified, ticker=stock)
-        TSLA_tweets_sentiments=perform_sentiment_analysis(TSLA_tweets_filtered)
-        print("Success")
-        x=True
-        return TSLA_tweet_sentiments
+        df=get_tweets(stock_name=stock)
+        tweets_specified=tweets_within_hours(df, datetime=datetime, next_x_hours=next_x_hours)
+        tweets_filtered=filter_unwanted_tweets(tweets_specified, ticker=stock)
+        tweets_sentiments=perform_sentiment_analysis(tweets_filtered, "Tweet")
+        print("Sentiment analysis of tweets success")
+        return tweets_sentiments
     except Exception as e:
         # if loading the model fails
-        TSLA_tweet_sentiments = pd.read_csv("TSLA tweets score.csv",parse_dates=['Date'], index_col=['Date'])
-        x=False
-        return TSLA_tweet_sentiments
+        print("Sentiment analysis of tweets failed")
+        print(e)
+        tweet_sentiments = pd.read_csv(r"data\TSLA tweets score.csv",parse_dates=['Date'], index_col=['Date'])
+        return tweet_sentiments
+
+def get_news(stock_name:str='TSLA')->pd.DataFrame:
+    """
+    This function will get news headlines for 
+    given ticker and return the dataframe.
+    """
+    # make sure the dataframe has the columns "headlines", "datetime" and "link"
+    stock_name=stock_name.lower()
+
+    # TODO: optimize the API - web scraping
+    # API call takes a long time
+    # response = requests.get(f'http://127.0.0.1:8000/news/?ticker={stock_name}').json()
+    # news: pd.DataFrame = pd.json_normalize(response)
+
+    news: pd.DataFrame = pd.read_csv("data/tsla_headlines.csv")
+
+    # TODO: write function to process the datetime column
+    # news['datetime'] = pd.to_datetime(news['datetime'])
+
+    return news
+
+def news_within_hours(df:pd.DataFrame, datetime:str='2021-09-30 00:13:26+00:00', next_x_hours:int=24) -> pd.DataFrame:
+    """
+    This function will filter the news for the specified stock 
+    and within the next x hours from the given datetime.
+    """
+    # Convert datetime string to datetime object
+    # datetime = pd.to_datetime(datetime)
+
+    # TODO: Filter dataframe for the specified stock and within the next x hours from the given datetime
+    # filtered_df = df[(df['Stock Name'] == stock_name) &
+    #                  (df['Date'] >= datetime) &
+    #                  (df['Date'] <= datetime + pd.Timedelta(hours=next_x_hours))]
+    
+    # filtered_df = df[(df['Date'] >= datetime) &
+    #                  (df['Date'] <= datetime + pd.Timedelta(hours=next_x_hours))]
+    
+    filtered_df = df
+
+    return filtered_df
+
+def get_news_df(datetime:str='2021-09-30 00:13:26+00:00',stock:str='TSLA',next_x_hours:int=24)->pd.DataFrame:
+    """
+    This function will return the dataframe containing the tweets for the specified stock.
+    """
+    try:
+        df=get_news(stock_name=stock)
+        news_specified=news_within_hours(df, datetime=datetime, next_x_hours=next_x_hours)
+        news_sentiments=perform_sentiment_analysis(news_specified, "headlines")
+        print("Sentiment analysis of news success")
+        return news_sentiments
+    except Exception as e:
+        # if loading the model fails
+        print("Sentiment analysis of news failed")
+        print(e)
+        # TODO: make a csv of already scored headlines
+        news_sentiments = pd.read_csv(r"data\TSLA tweets score.csv",parse_dates=['Date'], index_col=['Date'])
+        return news_sentiments
 
 def get_stock_data(ticker:str, date:str="2021-09-30", days_around:int=7) -> pd.DataFrame:
-
+    """
+    This function will download the stock data for the specified ticker and date.
+    """
     # make sure ticker is in upper case
     ticker=ticker.upper()
 
@@ -83,5 +162,5 @@ def get_stock_data(ticker:str, date:str="2021-09-30", days_around:int=7) -> pd.D
     except Exception as e:
         print("Error downloading the data from yfinance. Details: ")
         print(e)
-        TSLA_stock_prices = pd.read_csv("TSLA 14 days stock price.csv")
-        return TSLA_stock_prices
+        stock_prices = pd.read_csv(r"data\TSLA 14 days stock price.csv")
+        return stock_prices
